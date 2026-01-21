@@ -31,7 +31,7 @@ Développer une plateforme capable de :
 ### 1. Cloner le repository
 
 ```bash
-git clone <votre-repo-github>
+git clone "https://github.com/Safaa-Ettalhi/DegiArch.git"
 cd DigiArch
 ```
 
@@ -81,11 +81,4 @@ Voir les fichiers `.env.example` dans chaque dossier pour la configuration déta
 - [Guide d'installation](./docs/INSTALLATION.md)
 - [API Documentation](./docs/API.md)
 
-## 🔗 Liens
 
-- **JIRA**: [Lien vers votre planification JIRA]
-- **GitHub**: [Lien vers votre repository]
-
-## 📝 Licence
-
-[Votre licence]

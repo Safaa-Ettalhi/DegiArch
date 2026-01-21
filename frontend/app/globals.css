@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --background: #fafbfc;
+  --foreground: #0a0f1c;
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #0a0f1c;
+  --popover: rgba(255, 255, 255, 0.9);
+  --popover-foreground: #0a0f1c;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(241, 245, 249, 0.6);
+  --secondary-foreground: #0a0f1c;
+  --muted: rgba(241, 245, 249, 0.8);
+  --muted-foreground: #64748b;
+  --accent: rgba(59, 130, 246, 0.1);
+  --accent-foreground: #3b82f6;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(226, 232, 240, 0.5);
+  --input: rgba(226, 232, 240, 0.8);
+  --ring: #3b82f6;
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0f1c;
+    --foreground: #f8fafc;
+    --card: rgba(30, 41, 59, 0.6);
+    --card-foreground: #f8fafc;
+    --popover: rgba(30, 41, 59, 0.9);
+    --popover-foreground: #f8fafc;
+    --primary: #60a5fa;
+    --primary-foreground: #0a0f1c;
+    --secondary: rgba(30, 41, 59, 0.8);
+    --secondary-foreground: #f8fafc;
+    --muted: rgba(51, 65, 85, 0.6);
+    --muted-foreground: #94a3b8;
+    --accent: rgba(96, 165, 250, 0.15);
+    --accent-foreground: #60a5fa;
+    --destructive: #f87171;
+    --destructive-foreground: #0a0f1c;
+    --border: rgba(51, 65, 85, 0.5);
+    --input: rgba(51, 65, 85, 0.8);
+    --ring: #60a5fa;
+  }
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}

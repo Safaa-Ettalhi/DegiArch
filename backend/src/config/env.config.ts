@@ -1,10 +1,10 @@
 export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   mongodb: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/digiarch',
+    uri: process.env.MONGO_URI || 'mongodb://localhost:27017/digiarch',
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-secret-key',
+    secret: (process.env.JWT_SECRET || '').trim() || 'your-secret-key',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   minio: {
@@ -12,8 +12,8 @@ export default () => ({
     port: parseInt(process.env.MINIO_PORT || '9000', 10),
     useSSL: process.env.MINIO_USE_SSL === 'true',
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
-    bucketName: process.env.MINIO_BUCKET_NAME || 'archives',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+    bucketName: process.env.MINIO_BUCKET || 'archives',
   },
   llm: {
     apiKey: process.env.LLM_API_KEY,

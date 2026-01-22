@@ -58,6 +58,15 @@ export class Document {
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   uploadedBy?: MongooseSchema.Types.ObjectId;
+
+  @Prop({ required: true })
+  minioPath: string;
+
+  @Prop()
+  fileSize?: number;
+
+  @Prop()
+  mimeType?: string;
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(Document);

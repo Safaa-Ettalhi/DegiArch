@@ -25,7 +25,7 @@ export default function Home() {
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent animate-spin mx-auto"></div>
         <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 uppercase tracking-wider">Chargement</p>
-      </div>
+        </div>
     </div>
   );
 }

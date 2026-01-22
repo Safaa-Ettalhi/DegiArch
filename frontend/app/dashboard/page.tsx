@@ -7,10 +7,13 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
+import { documentsApi, Document } from '@/lib/documents';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -21,7 +24,26 @@ export default function DashboardPage() {
 
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
+    fetchDocuments();
   }, [router]);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const data = await documentsApi.getAll();
+      setDocuments(data);
+    } catch (error) {
+      console.error('Erreur lors du chargement des documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRecentDocumentsCount = () => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return documents.filter((doc) => new Date(doc.createdAt) >= sevenDaysAgo).length;
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -102,7 +124,15 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">0</div>
+              {loading ? (
+                <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  ...
+                </div>
+              ) : (
+                <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  {documents.length}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -123,7 +153,15 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">0</div>
+              {loading ? (
+                <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  ...
+                </div>
+              ) : (
+                <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {getRecentDocumentsCount()}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -142,10 +180,10 @@ export default function DashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => router.push('/search')}
+                onClick={() => router.push('/documents')}
                 className="w-full h-11 font-semibold backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
               >
-                Rechercher
+                Voir mes documents
               </Button>
             </CardContent>
           </Card>

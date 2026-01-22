@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client } from 'minio';
@@ -22,8 +23,12 @@ export class MinioService implements OnModuleInit {
       port: port || 9000,
       useSSL: useSSL || false,
       accessKey: accessKey || 'minioadmin',
-      secretKey: secretKey || 'minioadmin123',
+      secretKey: secretKey || 'minioadmin',
     });
+
+    console.log(
+      ` MinIO configuré: ${endpoint || 'localhost'}:${port || 9000}, Bucket: ${this.bucketName}`,
+    );
   }
 
   async onModuleInit() {
@@ -31,10 +36,20 @@ export class MinioService implements OnModuleInit {
   }
 
   private async ensureBucketExists() {
-    const exists = await this.minioClient.bucketExists(this.bucketName);
-    if (!exists) {
-      await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
-      console.log(`✅ Bucket "${this.bucketName}" créé avec succès`);
+    try {
+      const exists = await this.minioClient.bucketExists(this.bucketName);
+      if (!exists) {
+        await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
+        console.log(`✅ Bucket "${this.bucketName}" créé avec succès`);
+      } else {
+        console.log(`✅ Bucket "${this.bucketName}" existe déjà`);
+      }
+    } catch (error) {
+      console.error(
+        ' Erreur lors de la vérification/création du bucket:',
+        error,
+      );
+      throw error;
     }
   }
 
@@ -42,20 +57,38 @@ export class MinioService implements OnModuleInit {
     file: Express.Multer.File,
     folderPath: string,
   ): Promise<string> {
-    const fileName = `${folderPath}/${Date.now()}-${file.originalname}`;
+    const cleanFolderPath = folderPath
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9/_-]/g, '')
+      .toLowerCase();
+    const cleanFileName = file.originalname
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '');
+
+    const fileName = `${cleanFolderPath}/${Date.now()}-${cleanFileName}`;
     const metaData = {
       'Content-Type': file.mimetype,
     };
 
-    await this.minioClient.putObject(
-      this.bucketName,
-      fileName,
-      file.buffer,
-      file.size,
-      metaData,
-    );
-
-    return fileName;
+    try {
+      await this.minioClient.putObject(
+        this.bucketName,
+        fileName,
+        file.buffer,
+        file.size,
+        metaData,
+      );
+      return fileName;
+    } catch (error: any) {
+      console.error(' Erreur MinIO upload:', error);
+      if (error.code === 'AccessDenied') {
+        throw new Error(
+          `Accès refusé à MinIO. Vérifiez les credentials dans .env (MINIO_ACCESS_KEY et MINIO_SECRET_KEY doivent correspondre à docker-compose.yml)`,
+        );
+      }
+      throw error;
+    }
   }
 
   async getFileUrl(

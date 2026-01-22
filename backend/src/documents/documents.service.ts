@@ -91,6 +91,10 @@ export class DocumentsService {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `${uploadDto.department}/${uploadDto.documentType}/${year}/${month}`;
+    const cleanDepartment = uploadDto.department.trim().replace(/\s+/g, '_');
+    const cleanDocumentType = uploadDto.documentType
+      .trim()
+      .replace(/\s+/g, '_');
+    return `${cleanDepartment}/${cleanDocumentType}/${year}/${month}`;
   }
 }

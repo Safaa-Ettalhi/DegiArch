@@ -16,7 +16,7 @@ import envConfig from './config/env.config';
       envFilePath: '.env',
     }),
     MongooseModule.forRoot(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/digiarch',
+      process.env.MONGO_URI || 'mongodb://localhost:27017/digiarch',
     ),
     AuthModule,
     UsersModule,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -7,6 +8,7 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -17,7 +19,9 @@ import {
 } from '../schemas/document.schema';
 import { MinioService } from '../storage/minio.service';
 import { LlmService } from '../llm/llm.service';
+import { AuditService } from './audit.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
+import { UpdateMetadataDto } from './dto/update-metadata.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -27,6 +31,7 @@ export class DocumentsService {
     @InjectModel(Document.name) private documentModel: Model<DocumentDocument>,
     private minioService: MinioService,
     private llmService: LlmService,
+    private auditService: AuditService,
   ) {}
 
   async uploadDocument(
@@ -332,5 +337,164 @@ export class DocumentsService {
     await this.minioService.deleteFile(document.minioPath);
     await this.documentModel.findByIdAndDelete(id);
     return { message: 'Document deleted successfully' };
+  }
+
+  async updateMetadata(
+    id: string,
+    updateDto: UpdateMetadataDto,
+    userId: string,
+    userRole: string,
+  ) {
+    const document = await this.findOne(id);
+    let uploadedById: string | undefined;
+
+    if (document.uploadedBy) {
+      const userObj = document.uploadedBy as any;
+      if (userObj._id) {
+        uploadedById = String(userObj._id);
+      } else {
+        uploadedById = userObj.toString ? userObj.toString() : String(userObj);
+      }
+    }
+
+    const normalizedUserId = userId ? String(userId).trim() : undefined;
+    const normalizedUploadedById = uploadedById
+      ? String(uploadedById).trim()
+      : undefined;
+
+    this.logger.log(
+      `[Update] Vérification permissions - userId: ${normalizedUserId}, uploadedById: ${normalizedUploadedById}, userRole: ${userRole}`,
+    );
+    this.logger.log(
+      `[Update] document.uploadedBy type: ${typeof document.uploadedBy}, value: ${JSON.stringify(document.uploadedBy)}`,
+    );
+
+    if (userRole !== 'ADMIN' && normalizedUploadedById !== normalizedUserId) {
+      this.logger.warn(
+        `[Update] Permission refusée - userId: ${normalizedUserId} !== uploadedById: ${normalizedUploadedById}`,
+      );
+      throw new ForbiddenException(
+        "Vous n'avez pas la permission de modifier ce document",
+      );
+    }
+
+    const oldValue = {
+      firstName: document.firstName,
+      lastName: document.lastName,
+      cin: document.cin,
+      department: document.department,
+      documentType: document.documentType,
+      documentStatus: document.documentStatus,
+    };
+
+    const updates: Partial<Document> = {};
+    if (updateDto.firstName !== undefined)
+      updates.firstName = updateDto.firstName || undefined;
+    if (updateDto.lastName !== undefined)
+      updates.lastName = updateDto.lastName || undefined;
+    if (updateDto.cin !== undefined) updates.cin = updateDto.cin || undefined;
+    if (updateDto.department !== undefined)
+      updates.department = updateDto.department;
+    if (updateDto.documentType !== undefined)
+      updates.documentType = updateDto.documentType;
+    if (updateDto.documentStatus !== undefined)
+      updates.documentStatus = updateDto.documentStatus;
+
+    if (
+      updateDto.firstName !== undefined ||
+      updateDto.lastName !== undefined ||
+      updateDto.cin !== undefined ||
+      updateDto.department !== undefined ||
+      updateDto.documentType !== undefined
+    ) {
+      const newFirstName = updateDto.firstName ?? document.firstName;
+      const newLastName = updateDto.lastName ?? document.lastName;
+      const newCin = updateDto.cin ?? document.cin;
+      const newDepartment = updateDto.department ?? document.department;
+      const newDocumentType = updateDto.documentType ?? document.documentType;
+
+      const newLogicalPath = await this.generateLogicalPath(
+        {
+          firstName: newFirstName,
+          lastName: newLastName,
+          cin: newCin,
+          department: newDepartment,
+          documentType: newDocumentType,
+        },
+        {
+          department: newDepartment,
+          documentType: newDocumentType,
+        },
+      );
+
+      updates.logicalPath = newLogicalPath;
+      updates.metadataPath = newLogicalPath;
+
+      if (newLogicalPath !== document.logicalPath) {
+        this.logger.log(
+          `[Update] Chemin logique changé: ${document.logicalPath} -> ${newLogicalPath}`,
+        );
+      }
+    }
+
+    const finalFirstName = updates.firstName ?? document.firstName;
+    const finalLastName = updates.lastName ?? document.lastName;
+    const finalCin = updates.cin ?? document.cin;
+    updates.humanVerificationRequired =
+      !finalCin || !finalFirstName || !finalLastName;
+
+    if (updates.logicalPath) {
+      const updatedMetadata = {
+        ...document.metadata,
+        department_description: updates.department || document.department,
+        document_description: updates.documentType || document.documentType,
+        document_type: updates.documentType || document.documentType,
+        document_status: updates.documentStatus || document.documentStatus,
+        human_verification_required: updates.humanVerificationRequired,
+        extracted_data: {
+          firstName: finalFirstName || null,
+          lastName: finalLastName || null,
+          cin: finalCin || null,
+        },
+        last_modified: new Date().toISOString(),
+        modified_by: userId,
+      };
+
+      await this.saveMetadataJson(updates.logicalPath, updatedMetadata);
+      updates.metadata = updatedMetadata;
+    }
+
+    const updatedDocument = await this.documentModel
+      .findByIdAndUpdate(id, { $set: updates }, { new: true })
+      .populate('uploadedBy', 'firstName lastName email');
+
+    if (!updatedDocument) {
+      throw new NotFoundException('Document not found after update');
+    }
+
+    await this.auditService.logDocumentUpdate(
+      id,
+      userId,
+      oldValue,
+      {
+        firstName: updatedDocument.firstName,
+        lastName: updatedDocument.lastName,
+        cin: updatedDocument.cin,
+        department: updatedDocument.department,
+        documentType: updatedDocument.documentType,
+        documentStatus: updatedDocument.documentStatus,
+      },
+      `Métadonnées mises à jour par ${userRole === 'ADMIN' ? 'Admin' : 'Archive Manager'}`,
+    );
+
+    this.logger.log(
+      `[Update] Métadonnées mises à jour pour le document: ${id}`,
+    );
+    return updatedDocument;
+  }
+
+  async getDocumentHistory(id: string) {
+    const document = await this.findOne(id);
+    return this.auditService.getDocumentHistory(id);
   }
 }

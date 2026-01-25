@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DocumentsModule } from './documents/documents.module';
+import { LlmModule } from './llm/llm.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import envConfig from './config/env.config';
@@ -21,6 +22,7 @@ import envConfig from './config/env.config';
     AuthModule,
     UsersModule,
     DocumentsModule,
+    LlmModule,
   ],
   controllers: [AppController],
   providers: [AppService],

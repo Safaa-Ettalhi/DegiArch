@@ -15,8 +15,17 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
-    const user = await this.userModel.findOne({ email, isActive: true });
-    if (user && (await bcrypt.compare(password, user.passwordHash))) {
+    const user = await this.userModel.findOne({ email });
+    if (!user) {
+      return null;
+    }
+    
+    // Vérifier si le compte est désactivé
+    if (!user.isActive) {
+      throw new UnauthorizedException('Votre compte est désactivé. Veuillez contacter le support.');
+    }
+    
+    if (await bcrypt.compare(password, user.passwordHash)) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...result } = user.toObject();
       return result;

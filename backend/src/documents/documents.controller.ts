@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Param,
   UseGuards,
@@ -14,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadDocumentDto } from './dto/upload-document.dto';
+import { UpdateMetadataDto } from './dto/update-metadata.dto';
 import { UserRole } from '../schemas/user.schema';
 
 @Controller('documents')
@@ -54,6 +56,25 @@ export class DocumentsController {
   @Get(':id/url')
   async getFileUrl(@Param('id') id: string) {
     return { url: await this.documentsService.getFileUrl(id) };
+  }
+
+  @Patch(':id')
+  async updateMetadata(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateMetadataDto,
+    @Request() req: { user: { sub: string; role: UserRole | string } },
+  ) {
+    return this.documentsService.updateMetadata(
+      id,
+      updateDto,
+      req.user.sub,
+      req.user.role,
+    );
+  }
+
+  @Get(':id/history')
+  async getHistory(@Param('id') id: string) {
+    return this.documentsService.getDocumentHistory(id);
   }
 
   @Delete(':id')

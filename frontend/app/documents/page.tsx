@@ -18,6 +18,18 @@ export default function DocumentsPage() {
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterType, setFilterType] = useState('');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    cin: '',
+    department: '',
+    documentType: '',
+    documentStatus: 'pending' as 'pending' | 'valid' | 'incomplete',
+  });
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -63,6 +75,43 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
       alert('Erreur lors du téléchargement');
+    }
+  };
+
+  const handleEdit = (document: Document) => {
+    setEditingDocument(document);
+    setEditForm({
+      firstName: document.firstName || '',
+      lastName: document.lastName || '',
+      cin: document.cin || '',
+      department: document.department || '',
+      documentType: document.documentType || '',
+      documentStatus: document.documentStatus || 'pending',
+    });
+    setSuccessMessage('');
+    setErrorMessage('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingDocument) return;
+
+    setSaving(true);
+    setSuccessMessage('');
+    setErrorMessage('');
+
+    try {
+      await documentsApi.update(editingDocument._id, editForm);
+      setSuccessMessage('Métadonnées mises à jour avec succès !');
+      setTimeout(() => {
+        setEditingDocument(null);
+        setSuccessMessage('');
+        fetchDocuments();
+      }, 1500);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -303,6 +352,16 @@ export default function DocumentsPage() {
                       >
                         Détails
                       </Button>
+                      {(user?.role === 'ADMIN' || document.uploadedBy?._id === user?._id || document.uploadedBy?._id === user?.id) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(document)}
+                          className="h-9 backdrop-blur-sm bg-white/50 dark:bg-slate-800/50 text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                        >
+                          Modifier
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -457,6 +516,149 @@ export default function DocumentsPage() {
                   className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 >
                   Supprimer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Modification Métadonnées */}
+      {editingDocument && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingDocument(null)}>
+          <Card 
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20 dark:border-white/10 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-slate-200/50 dark:border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Modifier les Métadonnées
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingDocument(null)}
+                  className="h-8 w-8 p-0"
+                >
+                  ✕
+                </Button>
+              </div>
+              <CardDescription className="mt-2">
+                Document: {editingDocument.fileName}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Messages de succès/erreur */}
+              {successMessage && (
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm">
+                  {successMessage}
+                </div>
+              )}
+              {errorMessage && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* Formulaire de modification */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Prénom
+                  </label>
+                  <Input
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                    placeholder="Prénom"
+                    className="bg-white/50 dark:bg-slate-800/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Nom
+                  </label>
+                  <Input
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                    placeholder="Nom"
+                    className="bg-white/50 dark:bg-slate-800/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    CIN
+                  </label>
+                  <Input
+                    value={editForm.cin}
+                    onChange={(e) => setEditForm({ ...editForm, cin: e.target.value })}
+                    placeholder="CIN (ex: AB123456)"
+                    className="bg-white/50 dark:bg-slate-800/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Département
+                  </label>
+                  <Input
+                    value={editForm.department}
+                    onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                    placeholder="Département"
+                    className="bg-white/50 dark:bg-slate-800/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Type de document
+                  </label>
+                  <Input
+                    value={editForm.documentType}
+                    onChange={(e) => setEditForm({ ...editForm, documentType: e.target.value })}
+                    placeholder="Type de document"
+                    className="bg-white/50 dark:bg-slate-800/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Statut
+                  </label>
+                  <select
+                    value={editForm.documentStatus}
+                    onChange={(e) => setEditForm({ ...editForm, documentStatus: e.target.value as 'pending' | 'valid' | 'incomplete' })}
+                    className="flex h-10 w-full rounded-xl border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm px-4 py-2 text-sm text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <option value="pending">En attente</option>
+                    <option value="valid">Valide</option>
+                    <option value="incomplete">Incomplet</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Info sur le chemin logique */}
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                  <strong>Note:</strong> Le chemin logique sera automatiquement recalculé après la sauvegarde.
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                  Chemin actuel: {editingDocument.logicalPath}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+                <Button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="flex-1"
+                >
+                  {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingDocument(null)}
+                  disabled={saving}
+                >
+                  Annuler
                 </Button>
               </div>
             </CardContent>

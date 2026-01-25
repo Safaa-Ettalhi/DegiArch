@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadDocumentDto } from './dto/upload-document.dto';
+import { UserRole } from '../schemas/user.schema';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
@@ -34,8 +35,8 @@ export class DocumentsController {
   }
 
   @Get()
-  async findAll(@Request() req: { user: { sub: string; role: string } }) {
-    const userId = req.user.role === 'ADMIN' ? undefined : req.user.sub;
+  async findAll(@Request() req: { user: { sub: string; role: UserRole | string } }) {
+    const userId = req.user.role === UserRole.ADMIN || req.user.role === 'ADMIN' ? undefined : req.user.sub;
     return this.documentsService.findAll(userId);
   }
 

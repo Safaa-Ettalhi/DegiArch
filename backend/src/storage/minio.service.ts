@@ -40,9 +40,9 @@ export class MinioService implements OnModuleInit {
       const exists = await this.minioClient.bucketExists(this.bucketName);
       if (!exists) {
         await this.minioClient.makeBucket(this.bucketName, 'us-east-1');
-        console.log(`✅ Bucket "${this.bucketName}" créé avec succès`);
+        console.log(` Bucket "${this.bucketName}" créé avec succès`);
       } else {
-        console.log(`✅ Bucket "${this.bucketName}" existe déjà`);
+        console.log(` Bucket "${this.bucketName}" existe déjà`);
       }
     } catch (error) {
       console.error(
@@ -91,6 +91,40 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  async uploadFileWithName(
+    file: Express.Multer.File,
+    objectName: string,
+  ): Promise<string> {
+    const cleanObjectName = objectName
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9/._-]/g, '')
+      .toLowerCase();
+
+    const metaData = {
+      'Content-Type': file.mimetype,
+    };
+
+    try {
+      await this.minioClient.putObject(
+        this.bucketName,
+        cleanObjectName,
+        file.buffer,
+        file.size,
+        metaData,
+      );
+      return cleanObjectName;
+    } catch (error: any) {
+      console.error(' Erreur MinIO upload:', error);
+      if (error.code === 'AccessDenied') {
+        throw new Error(
+          `Accès refusé à MinIO. Vérifiez les credentials dans .env`,
+        );
+      }
+      throw error;
+    }
+  }
+
   async getFileUrl(
     objectName: string,
     expiry: number = 7 * 24 * 60 * 60,
@@ -113,5 +147,21 @@ export class MinioService implements OnModuleInit {
     } catch {
       return false;
     }
+  }
+
+  async uploadBuffer(
+    buffer: Buffer,
+    objectName: string,
+    contentType: string = 'application/json',
+  ): Promise<void> {
+    await this.minioClient.putObject(
+      this.bucketName,
+      objectName,
+      buffer,
+      buffer.length,
+      {
+        'Content-Type': contentType,
+      },
+    );
   }
 }

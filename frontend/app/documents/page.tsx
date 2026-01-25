@@ -17,6 +17,7 @@ export default function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -106,9 +107,15 @@ export default function DocumentsPage() {
   };
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.documentType.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      doc.fileName.toLowerCase().includes(searchLower) ||
+      doc.department.toLowerCase().includes(searchLower) ||
+      doc.documentType.toLowerCase().includes(searchLower) ||
+      (doc.firstName && doc.firstName.toLowerCase().includes(searchLower)) ||
+      (doc.lastName && doc.lastName.toLowerCase().includes(searchLower)) ||
+      (doc.cin && doc.cin.toLowerCase().includes(searchLower)) ||
+      (doc.firstName && doc.lastName && `${doc.firstName} ${doc.lastName}`.toLowerCase().includes(searchLower));
     const matchesDepartment = !filterDepartment || doc.department === filterDepartment;
     const matchesType = !filterType || doc.documentType === filterType;
     return matchesSearch && matchesDepartment && matchesType;
@@ -165,7 +172,7 @@ export default function DocumentsPage() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="md:col-span-2">
                 <Input
-                  placeholder="Rechercher par nom, département, type..."
+                  placeholder="Rechercher par nom, prénom, CIN, département, type..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-11 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
@@ -229,6 +236,35 @@ export default function DocumentsPage() {
                         <h3 className="font-semibold text-slate-900 dark:text-slate-50 text-lg mb-1">
                           {document.fileName}
                         </h3>
+                        {/* Informations extraites par LLM */}
+                        {(document.firstName || document.lastName || document.cin) && (
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            {(document.firstName || document.lastName) && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {document.firstName} {document.lastName}
+                              </span>
+                            )}
+                            {document.cin && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                </svg>
+                                CIN: {document.cin}
+                              </span>
+                            )}
+                            {document.signatureDetected && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Signature détectée
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
                           <span className="flex items-center gap-1">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,6 +283,11 @@ export default function DocumentsPage() {
                           <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${getStatusColor(document.documentStatus)}`}>
                             {getStatusLabel(document.documentStatus)}
                           </span>
+                          {document.humanVerificationRequired && (
+                            <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                              ⚠ Vérification requise
+                            </span>
+                          )}
                           <span className="text-xs text-slate-500 dark:text-slate-400">
                             {document.logicalPath}
                           </span>
@@ -254,6 +295,14 @@ export default function DocumentsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedDocument(document)}
+                        className="h-9 backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
+                      >
+                        Détails
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -283,6 +332,137 @@ export default function DocumentsPage() {
           {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} sur {documents.length} total
         </div>
       </main>
+
+      {/* Modal Détails Document */}
+      {selectedDocument && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedDocument(null)}>
+          <Card 
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20 dark:border-white/10 shadow-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-slate-200/50 dark:border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Détails du Document
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDocument(null)}
+                  className="h-8 w-8 p-0"
+                >
+                  ✕
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Informations extraites par LLM */}
+              {(selectedDocument.firstName || selectedDocument.lastName || selectedDocument.cin) && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 border border-blue-200/50 dark:border-blue-800/50">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Informations Extraites par IA
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(selectedDocument.firstName || selectedDocument.lastName) && (
+                      <div>
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Nom complet:</span>
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                          {selectedDocument.firstName} {selectedDocument.lastName}
+                        </p>
+                      </div>
+                    )}
+                    {selectedDocument.cin && (
+                      <div>
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">CIN:</span>
+                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">{selectedDocument.cin}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Informations générales */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Fichier:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{selectedDocument.fileName}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Taille:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatFileSize(selectedDocument.fileSize)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Département:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{selectedDocument.department}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Type:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{selectedDocument.documentType}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Statut:</span>
+                    <span className={`inline-block px-2 py-1 rounded-lg text-xs font-semibold ${getStatusColor(selectedDocument.documentStatus)}`}>
+                      {getStatusLabel(selectedDocument.documentStatus)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Signature:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {selectedDocument.signatureDetected ? (
+                        <span className="text-green-600 dark:text-green-400">✓ Détectée</span>
+                      ) : (
+                        <span className="text-slate-400">Non détectée</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Chemin logique:</span>
+                  <p className="text-sm font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1">
+                    {selectedDocument.logicalPath}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Date d&apos;upload:</span>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatDate(selectedDocument.createdAt)}</p>
+                </div>
+                {selectedDocument.uploadedBy && (
+                  <div>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Uploadé par:</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {selectedDocument.uploadedBy.firstName} {selectedDocument.uploadedBy.lastName}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+                <Button
+                  onClick={() => handleDownload(selectedDocument)}
+                  className="flex-1"
+                >
+                  Télécharger le PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedDocument(null);
+                    handleDelete(selectedDocument._id);
+                  }}
+                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  Supprimer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

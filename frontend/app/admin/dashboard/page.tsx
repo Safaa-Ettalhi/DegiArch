@@ -7,10 +7,29 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
+import api from '@/lib/api';
+import { documentsApi } from '@/lib/documents';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [usersCount, setUsersCount] = useState<number>(0);
+  const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const usersResponse = await api.get('/users');
+      setUsersCount(Array.isArray(usersResponse.data) ? usersResponse.data.length : 0);
+      const documentsResponse = await documentsApi.getAll();
+      setDocumentsCount(Array.isArray(documentsResponse) ? documentsResponse.length : 0);
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -25,6 +44,8 @@ export default function AdminDashboardPage() {
       return;
     }
     setUser(userData);
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const handleLogout = () => {
@@ -106,7 +127,15 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">0</div>
+              {loading ? (
+                <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  ...
+                </div>
+              ) : (
+                <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  {usersCount}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -127,7 +156,15 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">0</div>
+              {loading ? (
+                <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  ...
+                </div>
+              ) : (
+                <div className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {documentsCount}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -146,10 +183,17 @@ export default function AdminDashboardPage() {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => router.push('/search')}
+                onClick={() => router.push('/documents')}
                 className="w-full h-11 font-semibold backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
               >
-                Rechercher
+                Voir tous les documents
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/upload')}
+                className="w-full h-11 font-semibold backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
+              >
+                Uploader un document
               </Button>
             </CardContent>
           </Card>

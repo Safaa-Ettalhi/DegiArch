@@ -35,8 +35,14 @@ export class DocumentsController {
   }
 
   @Get()
-  async findAll(@Request() req: { user: { sub: string; role: UserRole | string } }) {
-    const userId = req.user.role === UserRole.ADMIN || req.user.role === 'ADMIN' ? undefined : req.user.sub;
+  async findAll(
+    @Request() req: { user: { sub: string; role: UserRole | string } },
+  ) {
+    const userId =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+      req.user.role === UserRole.ADMIN || req.user.role === 'ADMIN'
+        ? undefined
+        : req.user.sub;
     return this.documentsService.findAll(userId);
   }
 

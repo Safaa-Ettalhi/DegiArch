@@ -78,7 +78,10 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return this.documentsService.delete(id);
+  async delete(
+    @Param('id') id: string,
+    @Request() req: { user: { sub: string } },
+  ) {
+    return this.documentsService.delete(id, req.user.sub);
   }
 }

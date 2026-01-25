@@ -72,4 +72,20 @@ export const documentsApi = {
   delete: async (id: string): Promise<void> => {
     return api.delete(`/documents/${id}`).then(() => undefined);
   },
+
+  update: async (id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    cin?: string;
+    department?: string;
+    documentType?: string;
+    documentStatus?: 'pending' | 'valid' | 'incomplete';
+  }): Promise<Document> => {
+    return api.patch(`/documents/${id}`, data).then((response) => response.data);
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getHistory: async (id: string): Promise<any[]> => {
+    return api.get(`/documents/${id}/history`).then((response) => response.data);
+  },
 };

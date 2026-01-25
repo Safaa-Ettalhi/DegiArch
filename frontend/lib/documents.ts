@@ -11,6 +11,13 @@ export interface Document {
   minioPath: string;
   fileSize: number;
   mimeType: string;
+  firstName?: string;
+  lastName?: string;
+  cin?: string;
+  signatureDetected?: boolean;
+  humanVerificationRequired?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: Record<string, any>;
   uploadedBy?: {
     _id: string;
     firstName: string;

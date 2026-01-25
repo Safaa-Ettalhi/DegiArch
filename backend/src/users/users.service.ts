@@ -76,4 +76,16 @@ export class UsersService {
     }
     return { message: 'User deactivated successfully' };
   }
+
+  async activate(id: string) {
+    const user = await this.userModel.findByIdAndUpdate(
+      id,
+      { isActive: true },
+      { new: true },
+    );
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { message: 'User activated successfully' };
+  }
 }

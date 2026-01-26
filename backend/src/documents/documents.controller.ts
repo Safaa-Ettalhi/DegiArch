@@ -10,6 +10,7 @@ import {
   UploadedFile,
   Body,
   Request,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentsService } from './documents.service';
@@ -75,6 +76,19 @@ export class DocumentsController {
   @Get(':id/history')
   async getHistory(@Param('id') id: string) {
     return this.documentsService.getDocumentHistory(id);
+  }
+
+  @Get('stats/advanced')
+  async getAdvancedStatistics(
+    @Request() req: { user: { role: UserRole | string } },
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    if (req.user.role !== UserRole.ADMIN && req.user.role !== 'ADMIN') {
+      throw new UnauthorizedException(
+        'Seuls les administrateurs peuvent accéder aux statistiques avancées',
+      );
+    }
+    return this.documentsService.getStatistics();
   }
 
   @Delete(':id')

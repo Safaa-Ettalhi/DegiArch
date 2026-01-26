@@ -334,6 +334,74 @@ export class DocumentsService {
     return document;
   }
 
+  async getStatistics() {
+    const total = await this.documentModel.countDocuments();
+    const byDepartment = await this.documentModel.aggregate([
+      { $group: { _id: '$department', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byStatus = await this.documentModel.aggregate([
+      { $group: { _id: '$documentStatus', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byType = await this.documentModel.aggregate([
+      { $group: { _id: '$documentType', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const verificationRequired = await this.documentModel.countDocuments({
+      humanVerificationRequired: true,
+    });
+
+    const withSignature = await this.documentModel.countDocuments({
+      signatureDetected: true,
+    });
+
+    const last7Months: Array<{ month: string; count: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+      const count = await this.documentModel.countDocuments({
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
+      });
+
+      last7Months.push({
+        month: date.toLocaleDateString('fr-FR', {
+          month: 'short',
+          year: 'numeric',
+        }),
+        count,
+      });
+    }
+
+    return {
+      total,
+      byDepartment: byDepartment.map((item) => ({
+        department: item._id,
+        count: item.count,
+      })),
+      byStatus: byStatus.map((item) => ({
+        status: item._id,
+        count: item.count,
+      })),
+      byType: byType.map((item) => ({
+        type: item._id,
+        count: item.count,
+      })),
+      verificationRequired,
+      withSignature,
+      last7Months,
+    };
+  }
+
   async getFileUrl(id: string) {
     const document = await this.findOne(id);
     return await this.minioService.getFileUrl(document.minioPath);

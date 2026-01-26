@@ -18,6 +18,8 @@ export default function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterVerificationRequired, setFilterVerificationRequired] = useState<'all' | 'required' | 'notRequired'>('all');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [documentHistory, setDocumentHistory] = useState<any[]>([]);
@@ -207,7 +209,12 @@ export default function DocumentsPage() {
       (doc.logicalPath && doc.logicalPath.toLowerCase().includes(searchLower));
     const matchesDepartment = !filterDepartment || doc.department === filterDepartment;
     const matchesType = !filterType || doc.documentType === filterType;
-    return matchesSearch && matchesDepartment && matchesType;
+    const matchesStatus = !filterStatus || doc.documentStatus === filterStatus;
+    const matchesVerification = 
+      filterVerificationRequired === 'all' ||
+      (filterVerificationRequired === 'required' && doc.humanVerificationRequired === true) ||
+      (filterVerificationRequired === 'notRequired' && doc.humanVerificationRequired !== true);
+    return matchesSearch && matchesDepartment && matchesType && matchesStatus && matchesVerification;
   });
 
   const departments = Array.from(new Set(documents.map((d) => d.department)));
@@ -258,8 +265,8 @@ export default function DocumentsPage() {
         {/* Filters */}
         <Card className="mb-6 border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
           <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="md:col-span-2">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+              <div className="md:col-span-3 lg:col-span-2">
                 <Input
                   placeholder="Rechercher par nom, prénom, CIN, département, type, dossier..."
                   value={searchTerm}
@@ -287,6 +294,51 @@ export default function DocumentsPage() {
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="flex h-11 w-full rounded-xl border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm px-4 py-2 text-sm text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <option value="">Tous les statuts</option>
+                <option value="pending">En attente</option>
+                <option value="valid">Valide</option>
+                <option value="incomplete">Incomplet</option>
+              </select>
+              <select
+                value={filterVerificationRequired}
+                onChange={(e) => setFilterVerificationRequired(e.target.value as 'all' | 'required' | 'notRequired')}
+                className="flex h-11 w-full rounded-xl border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm px-4 py-2 text-sm text-slate-900 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <option value="all">Tous les documents</option>
+                <option value="required">Vérification requise</option>
+                <option value="notRequired">Vérification non requise</option>
+              </select>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} trouvé{filteredDocuments.length > 1 ? 's' : ''}
+                {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm) && (
+                  <span className="ml-2 text-xs">
+                    (sur {documents.length} total)
+                  </span>
+                )}
+              </p>
+              {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterDepartment('');
+                    setFilterType('');
+                    setFilterStatus('');
+                    setFilterVerificationRequired('all');
+                  }}
+                  className="h-8 text-xs backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
+                >
+                  Réinitialiser les filtres
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

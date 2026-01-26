@@ -203,7 +203,8 @@ export default function DocumentsPage() {
       (doc.firstName && doc.firstName.toLowerCase().includes(searchLower)) ||
       (doc.lastName && doc.lastName.toLowerCase().includes(searchLower)) ||
       (doc.cin && doc.cin.toLowerCase().includes(searchLower)) ||
-      (doc.firstName && doc.lastName && `${doc.firstName} ${doc.lastName}`.toLowerCase().includes(searchLower));
+      (doc.firstName && doc.lastName && `${doc.firstName} ${doc.lastName}`.toLowerCase().includes(searchLower)) ||
+      (doc.logicalPath && doc.logicalPath.toLowerCase().includes(searchLower));
     const matchesDepartment = !filterDepartment || doc.department === filterDepartment;
     const matchesType = !filterType || doc.documentType === filterType;
     return matchesSearch && matchesDepartment && matchesType;
@@ -260,7 +261,7 @@ export default function DocumentsPage() {
             <div className="grid gap-4 md:grid-cols-4">
               <div className="md:col-span-2">
                 <Input
-                  placeholder="Rechercher par nom, prénom, CIN, département, type..."
+                  placeholder="Rechercher par nom, prénom, CIN, département, type, dossier..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-11 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"

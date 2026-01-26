@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   typedRoutes: false,
+  output: 'standalone',
 };
 
 export default nextConfig;

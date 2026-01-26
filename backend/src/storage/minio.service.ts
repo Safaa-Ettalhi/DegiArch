@@ -32,6 +32,10 @@ export class MinioService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+      console.log(' Mode test détecté: initialisation MinIO ignorée');
+      return;
+    }
     await this.ensureBucketExists();
   }
 

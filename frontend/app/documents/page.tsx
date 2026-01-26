@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/logo';
 import { documentsApi, Document } from '@/lib/documents';
+import Link from 'next/link';
+
+const CARDS_PER_PAGE = 6;
 
 export default function DocumentsPage() {
   const router = useRouter();
@@ -20,6 +23,9 @@ export default function DocumentsPage() {
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVerificationRequired, setFilterVerificationRequired] = useState<'all' | 'required' | 'notRequired'>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [documentHistory, setDocumentHistory] = useState<any[]>([]);
@@ -82,6 +88,84 @@ export default function DocumentsPage() {
       console.error('Erreur lors du téléchargement:', error);
       alert('Erreur lors du téléchargement');
     }
+  };
+
+  const handleExportCSV = () => {
+    if (filteredDocuments.length === 0) {
+      alert('Aucun document à exporter');
+      return;
+    }
+
+    // En-têtes CSV
+    const headers = [
+      'Nom du fichier',
+      'Chemin logique',
+      'Prénom',
+      'Nom',
+      'CIN',
+      'Département',
+      'Type de document',
+      'Statut',
+      'Signature détectée',
+      'Vérification requise',
+      'Date de scan',
+      'Uploadé par',
+      'Date de création',
+      'Date de modification',
+    ];
+
+    // Conversion des données
+    const rows = filteredDocuments.map((doc) => {
+      const statusLabel = doc.documentStatus === 'valid' ? 'Valide' : 
+                         doc.documentStatus === 'incomplete' ? 'Incomplet' : 'En attente';
+      const uploadedBy = doc.uploadedBy 
+        ? `${doc.uploadedBy.firstName} ${doc.uploadedBy.lastName} (${doc.uploadedBy.email})`
+        : 'N/A';
+      
+      return [
+        doc.fileName || '',
+        doc.logicalPath || '',
+        doc.firstName || '',
+        doc.lastName || '',
+        doc.cin || '',
+        doc.department || '',
+        doc.documentType || '',
+        statusLabel,
+        doc.signatureDetected ? 'Oui' : 'Non',
+        doc.humanVerificationRequired ? 'Oui' : 'Non',
+        doc.scanDate ? new Date(doc.scanDate).toLocaleDateString('fr-FR') : '',
+        uploadedBy,
+        doc.createdAt ? new Date(doc.createdAt).toLocaleString('fr-FR') : '',
+        doc.updatedAt ? new Date(doc.updatedAt).toLocaleString('fr-FR') : '',
+      ];
+    });
+
+    // Fonction pour échapper les valeurs CSV
+    const escapeCSV = (value: string) => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    // Création du contenu CSV
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(',')),
+    ].join('\n');
+
+    // Création du blob et téléchargement
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `documents_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleEdit = (document: Document) => {
@@ -214,8 +298,37 @@ export default function DocumentsPage() {
       filterVerificationRequired === 'all' ||
       (filterVerificationRequired === 'required' && doc.humanVerificationRequired === true) ||
       (filterVerificationRequired === 'notRequired' && doc.humanVerificationRequired !== true);
-    return matchesSearch && matchesDepartment && matchesType && matchesStatus && matchesVerification;
+    
+    // Filtre par date
+    let matchesDate = true;
+    if (filterDateFrom || filterDateTo) {
+      const docDate = doc.createdAt ? new Date(doc.createdAt) : null;
+      if (docDate) {
+        if (filterDateFrom) {
+          const fromDate = new Date(filterDateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          if (docDate < fromDate) matchesDate = false;
+        }
+        if (filterDateTo) {
+          const toDate = new Date(filterDateTo);
+          toDate.setHours(23, 59, 59, 999);
+          if (docDate > toDate) matchesDate = false;
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+    
+    return matchesSearch && matchesDepartment && matchesType && matchesStatus && matchesVerification && matchesDate;
   });
+
+  const totalPages = Math.ceil(filteredDocuments.length / CARDS_PER_PAGE);
+  const startIndex = (currentPage - 1) * CARDS_PER_PAGE;
+  const paginatedDocuments = filteredDocuments.slice(startIndex, startIndex + CARDS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterDepartment, filterType, filterStatus, filterVerificationRequired, filterDateFrom, filterDateTo]);
 
   const departments = Array.from(new Set(documents.map((d) => d.department)));
   const documentTypes = Array.from(new Set(documents.map((d) => d.documentType)));
@@ -251,12 +364,27 @@ export default function DocumentsPage() {
               {user?.role === 'ADMIN' ? 'Tous les Documents' : 'Mes Documents'}
             </h1>
           </div>
-          <Button
-            onClick={() => router.push('/upload')}
-            className="h-9 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
-          >
-            + Uploader
-          </Button>
+          <div className="flex items-center gap-3">
+            {filteredDocuments.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleExportCSV}
+                className="h-9 backdrop-blur-sm bg-white/50 dark:bg-slate-800/50 flex items-center gap-2"
+                title="Exporter les documents filtrés en CSV"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Exporter CSV
+              </Button>
+            )}
+            <Button
+              onClick={() => router.push('/upload')}
+              className="h-9 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+            >
+              + Uploader
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -265,7 +393,7 @@ export default function DocumentsPage() {
         {/* Filters */}
         <Card className="mb-6 border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
           <CardContent className="p-6">
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6 mb-4">
               <div className="md:col-span-3 lg:col-span-2">
                 <Input
                   placeholder="Rechercher par nom, prénom, CIN, département, type, dossier..."
@@ -314,16 +442,50 @@ export default function DocumentsPage() {
                 <option value="notRequired">Vérification non requise</option>
               </select>
             </div>
+            {/* Filtres par date */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Date de début
+                </label>
+                <Input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="h-11 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Date de fin
+                </label>
+                <Input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="h-11 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
+                />
+              </div>
+            </div>
             <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} trouvé{filteredDocuments.length > 1 ? 's' : ''}
-                {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm) && (
-                  <span className="ml-2 text-xs">
-                    (sur {documents.length} total)
-                  </span>
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} trouvé{filteredDocuments.length > 1 ? 's' : ''}
+                  {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm || filterDateFrom || filterDateTo) && (
+                    <span className="ml-2 text-xs">
+                      (sur {documents.length} total)
+                    </span>
+                  )}
+                </p>
+                {documents.filter(d => d.humanVerificationRequired).length > 0 && (
+                  <Link href="/documents/verification">
+                    <Button variant="outline" size="sm" className="h-8 text-xs backdrop-blur-sm bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/50 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-950/30">
+                      ⚠ {documents.filter(d => d.humanVerificationRequired).length} vérification{documents.filter(d => d.humanVerificationRequired).length > 1 ? 's' : ''} requise{documents.filter(d => d.humanVerificationRequired).length > 1 ? 's' : ''}
+                    </Button>
+                  </Link>
                 )}
-              </p>
-              {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm) && (
+              </div>
+              {(filterDepartment || filterType || filterStatus || filterVerificationRequired !== 'all' || searchTerm || filterDateFrom || filterDateTo) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -333,6 +495,8 @@ export default function DocumentsPage() {
                     setFilterType('');
                     setFilterStatus('');
                     setFilterVerificationRequired('all');
+                    setFilterDateFrom('');
+                    setFilterDateTo('');
                   }}
                   className="h-8 text-xs backdrop-blur-sm bg-white/50 dark:bg-slate-800/50"
                 >
@@ -359,8 +523,9 @@ export default function DocumentsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            {filteredDocuments.map((document) => (
+          <>
+            <div className="grid gap-4">
+              {paginatedDocuments.map((document) => (
               <Card
                 key={document._id}
                 className="group border border-white/20 dark:border-white/10 shadow-lg bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl hover:shadow-xl hover:scale-[1.01] transition-all duration-300"
@@ -474,14 +639,80 @@ export default function DocumentsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* Stats */}
-        <div className="mt-8 text-center text-sm text-slate-600 dark:text-slate-400">
-          {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} sur {documents.length} total
-        </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Card className="mt-6 border border-white/20 dark:border-white/10 shadow-lg bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      Page {currentPage} sur {totalPages} • {filteredDocuments.length} document{filteredDocuments.length > 1 ? 's' : ''} trouvé{filteredDocuments.length > 1 ? 's' : ''} (sur {documents.length} total)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="h-9 backdrop-blur-sm bg-white/50 dark:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Précédent
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                          let page;
+                          if (totalPages <= 7) {
+                            page = i + 1;
+                          } else if (currentPage <= 4) {
+                            page = i + 1;
+                          } else if (currentPage >= totalPages - 3) {
+                            page = totalPages - 6 + i;
+                          } else {
+                            page = currentPage - 3 + i;
+                          }
+                          return (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className={`h-9 min-w-[36px] backdrop-blur-sm ${
+                                currentPage === page 
+                                  ? 'bg-blue-600 text-white' 
+                                  : 'bg-white/50 dark:bg-slate-800/50'
+                              }`}
+                            >
+                              {page}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="h-9 backdrop-blur-sm bg-white/50 dark:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Suivant
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
       </main>
 
       {/* Modal Détails Document */}

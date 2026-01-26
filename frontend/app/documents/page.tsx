@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -613,7 +614,7 @@ export default function DocumentsPage() {
                   {loadingHistory ? (
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-600 border-t-transparent mx-auto"></div>
-                      <p className="mt-4 text-slate-600 dark:text-slate-400">Chargement de l'historique...</p>
+                      <p className="mt-4 text-slate-600 dark:text-slate-400">Chargement de l&apos;historique...</p>
                     </div>
                   ) : documentHistory.length === 0 ? (
                     <div className="text-center py-8">

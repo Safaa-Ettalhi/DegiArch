@@ -16,6 +16,7 @@ export interface Document {
   cin?: string;
   signatureDetected?: boolean;
   humanVerificationRequired?: boolean;
+  scanDate?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>;
   uploadedBy?: {
@@ -87,5 +88,10 @@ export const documentsApi = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getHistory: async (id: string): Promise<any[]> => {
     return api.get(`/documents/${id}/history`).then((response) => response.data);
+  },
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getAdvancedStatistics: async (): Promise<any> => {
+    return api.get('/documents/stats/advanced').then((response) => response.data);
   },
 };

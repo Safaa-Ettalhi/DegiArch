@@ -10,11 +10,22 @@ import { Logo } from '@/components/logo';
 import api from '@/lib/api';
 import { documentsApi } from '@/lib/documents';
 
+interface Statistics {
+  total: number;
+  byDepartment: Array<{ department: string; count: number }>;
+  byStatus: Array<{ status: string; count: number }>;
+  byType: Array<{ type: string; count: number }>;
+  verificationRequired: number;
+  withSignature: number;
+  last7Months: Array<{ month: string; count: number }>;
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [usersCount, setUsersCount] = useState<number>(0);
   const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
@@ -24,6 +35,14 @@ export default function AdminDashboardPage() {
       setUsersCount(Array.isArray(usersResponse.data) ? usersResponse.data.length : 0);
       const documentsResponse = await documentsApi.getAll();
       setDocumentsCount(Array.isArray(documentsResponse) ? documentsResponse.length : 0);
+      
+      // Charger les statistiques avancées
+      try {
+        const stats = await documentsApi.getAdvancedStatistics();
+        setStatistics(stats);
+      } catch (error) {
+        console.error('Erreur lors du chargement des statistiques avancées:', error);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
     } finally {
@@ -198,6 +217,164 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Statistiques avancées */}
+        {statistics && (
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {/* Documents par département */}
+            <Card className="border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  Documents par département
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {statistics.byDepartment.slice(0, 5).map((item) => {
+                    const percentage = statistics.total > 0 ? (item.count / statistics.total) * 100 : 0;
+                    return (
+                      <div key={item.department} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-700 dark:text-slate-300">{item.department}</span>
+                          <span className="font-semibold text-slate-900 dark:text-slate-50">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                          <div
+                            className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Documents par statut */}
+            <Card className="border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  Documents par statut
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {statistics.byStatus.map((item) => {
+                    const percentage = statistics.total > 0 ? (item.count / statistics.total) * 100 : 0;
+                    const statusLabel = item.status === 'valid' ? 'Valide' : item.status === 'incomplete' ? 'Incomplet' : 'En attente';
+                    const statusColor = item.status === 'valid' ? 'from-green-500 to-emerald-500' : 
+                                       item.status === 'incomplete' ? 'from-yellow-500 to-amber-500' : 
+                                       'from-blue-500 to-indigo-500';
+                    return (
+                      <div key={item.status} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-700 dark:text-slate-300">{statusLabel}</span>
+                          <span className="font-semibold text-slate-900 dark:text-slate-50">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                          <div
+                            className={`h-2 bg-gradient-to-r ${statusColor} rounded-full transition-all`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Documents par type */}
+            <Card className="border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  Documents par type
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {statistics.byType.slice(0, 5).map((item) => {
+                    const percentage = statistics.total > 0 ? (item.count / statistics.total) * 100 : 0;
+                    return (
+                      <div key={item.type} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-700 dark:text-slate-300 truncate">{item.type}</span>
+                          <span className="font-semibold text-slate-900 dark:text-slate-50 ml-2">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                          <div
+                            className="h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Indicateurs supplémentaires */}
+            <Card className="border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl md:col-span-2 lg:col-span-3">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  Indicateurs clés
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-xl border border-orange-200 dark:border-orange-900/50">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Vérification requise</p>
+                    <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">{statistics.verificationRequired}</p>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl border border-green-200 dark:border-green-900/50">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Avec signature</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{statistics.withSignature}</p>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200 dark:border-blue-900/50">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Taux de signature</p>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      {statistics.total > 0 ? Math.round((statistics.withSignature / statistics.total) * 100) : 0}%
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Évolution sur 7 mois */}
+            <Card className="border border-white/20 dark:border-white/10 shadow-xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl md:col-span-2 lg:col-span-3">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                  Évolution des uploads (7 derniers mois)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-3 h-64 pb-8">
+                  {statistics.last7Months.map((item, index) => {
+                    const maxCount = Math.max(...statistics.last7Months.map(m => m.count), 1);
+                    const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center gap-2 h-full">
+                        <div className="w-full flex items-end justify-center flex-1 relative">
+                          <div
+                            className="w-full bg-gradient-to-t from-indigo-500 to-purple-500 rounded-t-lg transition-all hover:opacity-80 cursor-pointer"
+                            style={{ height: `${height}%`, minHeight: item.count > 0 ? '8px' : '0' }}
+                            title={`${item.month}: ${item.count} document(s)`}
+                          />
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 text-center font-medium mt-2">
+                          {item.month.split(' ')[0]}
+                        </p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{item.count}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   );

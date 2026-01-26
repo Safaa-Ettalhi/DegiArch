@@ -130,13 +130,13 @@ export class DocumentsService {
 
       await document.save();
       this.logger.log(`Document créé avec succès: ${document._id.toString()}`);
-      
+
       await this.auditService.logDocumentCreation(
         document._id.toString(),
         userId,
         `Document créé: ${document.fileName}`,
       );
-      
+
       return document;
     } catch (error) {
       this.logger.error("Erreur lors de l'upload du document", error);
@@ -341,16 +341,16 @@ export class DocumentsService {
 
   async delete(id: string, userId: string) {
     const document = await this.findOne(id);
-    
+
     await this.minioService.deleteFile(document.minioPath);
     await this.documentModel.findByIdAndDelete(id);
-    
+
     await this.auditService.logDocumentDeletion(
       id,
       userId,
       `Document supprimé: ${document.fileName}`,
     );
-    
+
     return { message: 'Document deleted successfully' };
   }
 
